@@ -76,7 +76,7 @@ Use the actual price, or `0` for “Price on request”. Set `showPrice` to `fal
 
 ## Before launch
 
-- The Facebook page requires login in the available browser, so its posts and listing photos could not be read or copied. Add verified listings and owner-approved photos to Firestore.
+- The Arabic and English homepages embed the publicly accessible 23-second Facebook reel in an iframe. Other Facebook posts and listing photos remain unverified; add verified listings and owner-approved photos to Firestore.
 - The folder did not include a website domain. Once selected, set absolute canonical/alternate URLs and JSON-LD URLs, add a domain-specific `sitemap.xml`, then submit it to Google Search Console and Bing Webmaster Tools.
 - The hero uses a remote architectural photo for atmosphere, not as a property listing. Replace it with owner-approved local photography before publishing.
 - Confirm the phone numbers, email, and office address with the owner before launch.
