@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.uid == 'HQUMsz71BPVYdFbbeMZCWarPH8v2';
+    }
+
+    match /properties/{propertyId} {
+      allow read: if isAdmin() || resource.data.status == 'available';
+      allow create, update, delete: if isAdmin();
+    }
+    match /inquiries/{inquiryId} {
+      allow create: if request.resource.data.keys().hasOnly(['name', 'phone', 'interest', 'message', 'source', 'createdAt'])
+        && request.resource.data.keys().hasAll(['name', 'phone', 'interest', 'message', 'source', 'createdAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100
+        && request.resource.data.phone is string && request.resource.data.phone.size() > 0 && request.resource.data.phone.size() <= 40
+        && request.resource.data.interest in ['buy', 'sell', 'other']
+        && request.resource.data.message is string && request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 1200
+        && request.resource.data.source in ['website-ar', 'website-en']
+        && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if false;
+    }
+  }
+}

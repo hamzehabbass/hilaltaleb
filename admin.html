@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#192320">
+  <title>Property Admin | Samir Taleb Real Estate</title>
+  <link rel="icon" href="/395185985_347165891026494_3547980265205536502_n.jpg"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/admin.css">
+</head>
+<body class="admin-page">
+  <header class="admin-header"><a class="brand" href="/en.html"><img src="/395185985_347165891026494_3547980265205536502_n.jpg" width="52" height="52" alt="Samir Taleb Real Estate"><span class="brand-copy"><strong>Property desk</strong><small>Samir Taleb Real Estate</small></span></a><div class="admin-header-actions"><a class="text-link" href="/en.html">View website <span aria-hidden="true">↗</span></a><button class="admin-signout" id="signout-button" type="button" hidden>Sign out</button></div></header>
+  <main class="admin-main">
+    <section class="admin-intro"><div><p class="page-kicker">LISTING MANAGEMENT</p><h1>Property desk</h1><p>Add, update, and publish property details for the public website.</p></div><span class="admin-live"><i></i> FIREBASE</span></section>
+    <div class="admin-notice" id="config-notice" role="status" hidden><strong>Firebase setup needed</strong><p>Add the Firebase web app settings in <code>firebase-config.js</code>, enable Email/Password Authentication, then create an admin user in Firebase Console. The setup steps are in README.</p></div>
+    <form class="admin-login" id="login-form" hidden><div><p class="page-kicker">SECURE SIGN-IN</p><h2>Sign in to manage listings</h2><p>Admin accounts are created in Firebase Authentication.</p></div><label for="admin-email">Email address</label><input id="admin-email" name="email" type="email" autocomplete="username" required><label for="admin-password">Password</label><input id="admin-password" name="password" type="password" autocomplete="current-password" required><div class="login-actions"><button class="admin-primary" type="submit">Sign in</button><button class="password-reset" id="password-reset" type="button">Forgot password?</button></div><p class="admin-feedback" id="login-feedback" role="status" aria-live="polite"></p></form>
+    <section class="admin-dashboard" id="admin-dashboard" hidden>
+      <div class="admin-identity"><div><span>Signed in as</span><strong id="signed-in-email"></strong></div><div class="admin-uid"><span>Admin UID</span><code id="admin-uid"></code><button id="copy-uid" type="button">Copy UID</button></div></div>
+      <p class="admin-rule-hint" id="uid-hint" hidden>The supplied admin UID is allowlisted in both rules files. Deploy the latest Firestore and Storage rules before managing listings.</p>
+      <div class="admin-layout">
+        <section class="editor-panel" aria-labelledby="editor-title"><div class="panel-heading"><div><p class="page-kicker">PROPERTY DETAILS</p><h2 id="editor-title">Add a property</h2></div><button class="admin-reset" id="reset-form" type="button">Clear form</button></div>
+          <form id="property-form">
+            <div class="admin-field-grid"><label>Title in English<input name="titleEn" required maxlength="120" placeholder="Land with road access"></label><label>العنوان بالعربية<input name="titleAr" required maxlength="120" dir="rtl" placeholder="عنوان العقار"></label></div>
+            <div class="admin-field-grid"><label>Property type<select name="type" required><option value="land">Land</option><option value="house">House</option><option value="apartment">Apartment</option><option value="commercial">Commercial</option><option value="other">Other</option></select></label><label>Listing status<select name="status" required><option value="available">Available</option><option value="sold">Sold</option><option value="draft">Draft</option></select></label></div>
+            <div class="admin-field-grid"><label>Location key<input name="locationKey" required maxlength="80" placeholder="mrah-el-sreij"><small>Use a consistent lowercase key for the same area.</small></label><label>Area (m²)<input name="areaSqm" type="number" min="0" step="1" placeholder="Optional"></label></div>
+            <div class="admin-field-grid"><label>Location in English<input name="locationEn" required maxlength="100" placeholder="Mrah El Sreij"></label><label>المنطقة بالعربية<input name="locationAr" required maxlength="100" dir="rtl" placeholder="مراح السريج"></label></div>
+            <div class="admin-field-grid"><label>Price<input name="price" type="number" min="0" step="any" value="0"><small>Enter 0 to show “Price on request”.</small></label><label>Currency<select name="currency"><option value="USD">USD</option><option value="LBP">LBP</option></select></label></div>
+            <div class="admin-field-grid"><label>Bedrooms<input name="bedrooms" type="number" min="0" step="1" value="0"></label><label>Bathrooms<input name="bathrooms" type="number" min="0" step="1" value="0"></label></div>
+            <div class="admin-field-grid"><label>Description in English<textarea name="descriptionEn" maxlength="1200" rows="3"></textarea></label><label>الوصف بالعربية<textarea name="descriptionAr" maxlength="1200" rows="3" dir="rtl"></textarea></label></div>
+            <label class="photo-picker" for="property-photos"><span><strong>Property photos</strong><small>JPG, PNG, or WebP · max 8 MB each</small></span><span class="photo-picker-action">Choose photos</span><input id="property-photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple></label>
+            <div class="photo-preview" id="photo-preview" aria-live="polite"></div>
+            <div class="admin-form-footer"><p class="admin-feedback" id="property-feedback" role="status" aria-live="polite">Only available listings appear on the public site.</p><button class="admin-primary" id="save-property" type="submit">Publish property</button></div>
+          </form>
+        </section>
+        <section class="inventory-panel" aria-labelledby="inventory-title"><div class="panel-heading"><div><p class="page-kicker">FIRESTORE INVENTORY</p><h2 id="inventory-title">Properties <span id="inventory-count">0</span></h2></div><button class="admin-reset" id="refresh-list" type="button" title="Refresh properties">Refresh</button></div><div class="inventory-message" id="inventory-message" role="status" aria-live="polite">Sign in to load property records.</div><div class="inventory-table-wrap"><table class="inventory-table"><thead><tr><th>Property</th><th>Status</th><th>Price</th><th>Actions</th></tr></thead><tbody id="inventory-rows"></tbody></table></div></section>
+      </div>
+    </section>
+  </main>
+  <script src="/firebase-config.js"></script><script type="module" src="/admin.js"></script>
+</body></html>
