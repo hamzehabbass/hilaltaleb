@@ -23,9 +23,31 @@ if (firebaseConfig?.measurementId) {
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (!reduceMotion) {
   document.documentElement.classList.add("motion-ready");
-  const revealTargets = [...document.querySelectorAll("main > section:not(.hero), .site-footer")];
+  const revealSelector = [
+    "main > section:not(.hero) .section-topline",
+    "main > section:not(.hero) .page-hero-content",
+    "main > section:not(.hero) .page-intro",
+    "main > section:not(.hero) .section-heading h2",
+    "main > section:not(.hero) .section-intro",
+    "main > section:not(.hero) .property-card",
+    "main > section:not(.hero) .journey-item",
+    "main > section:not(.hero) .manifesto-content",
+    "main > section:not(.hero) .manifesto-number",
+    "main > section:not(.hero) .manifesto-stamp",
+    "main > section:not(.hero) .contact-copy",
+    "main > section:not(.hero) .contact-layout > *",
+    "main > section:not(.hero) .process-step",
+    "main > section:not(.hero) .detail-copy",
+    "main > section:not(.hero) .faq-list details",
+    "main > section:not(.hero) .page-cta",
+    "main > section:not(.hero) .page-photo-break p",
+    "main > section:not(.hero) .office-panel",
+    ".site-footer > *"
+  ].join(",");
+  const revealTargets = [...new Set(document.querySelectorAll(revealSelector))];
   revealTargets.forEach((element, index) => {
-    element.setAttribute("data-reveal", index % 2 === 0 ? "right" : "left");
+    element.setAttribute("data-reveal", ["up", "right", "left"][index % 3]);
+    element.style.setProperty("--reveal-delay", `${(index % 6) * 65}ms`);
   });
   const updateReveals = () => {
     const viewportTop = window.innerHeight * 0.04;
