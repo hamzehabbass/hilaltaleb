@@ -152,6 +152,7 @@ function editProperty(property) {
   ["titleEn", "titleAr", "type", "status", "locationKey", "areaSqm", "locationEn", "locationAr", "price", "currency", "bedrooms", "bathrooms", "descriptionEn", "descriptionAr"].forEach((name) => {
     fields[name].value = property[name] ?? (name === "price" || name === "bedrooms" || name === "bathrooms" ? "0" : "");
   });
+  fields.showPrice.checked = property.showPrice !== false;
   retainedImages = [...(property.images || [])];
   retainedPaths = [...(property.imagePaths || [])];
   originalPaths = [...retainedPaths];
@@ -201,6 +202,7 @@ async function saveProperty(event) {
       locationAr: String(fields.get("locationAr")).trim(),
       areaSqm: Number(fields.get("areaSqm")) || 0,
       price: Number(fields.get("price")) || 0,
+      showPrice: fields.get("showPrice") === "on",
       currency: String(fields.get("currency")),
       bedrooms: Number(fields.get("bedrooms")) || 0,
       bathrooms: Number(fields.get("bathrooms")) || 0,

@@ -130,6 +130,7 @@ const logo = "/395185985_347165891026494_3547980265205536502_n.jpg";
 let listings = [];
 let database;
 let firebase;
+let galleryAutoplayTimer;
 
 document.querySelectorAll("[data-year]").forEach((element) => { element.textContent = new Date().getFullYear(); });
 const menuButton = document.querySelector(".menu-toggle");
@@ -151,24 +152,104 @@ function node(tag, className, value) {
   return element;
 }
 
+function createPropertyGallery(property) {
+  const gallery = document.createElement("div");
+  gallery.className = "property-photo property-gallery";
+  const title = property[isArabic ? "titleAr" : "titleEn"] || text.title;
+  gallery.setAttribute("role", "group");
+  gallery.setAttribute("aria-label", isArabic ? `صور ${title}` : `Photos of ${title}`);
+
+  const imageUrls = Array.isArray(property.images)
+    ? property.images.filter((url) => typeof url === "string" && url.startsWith("https://"))
+    : [];
+  if (!imageUrls.length && typeof property.image === "string" && property.image.startsWith("https://")) imageUrls.push(property.image);
+  if (!imageUrls.length) imageUrls.push(logo);
+  gallery.dataset.slideCount = String(imageUrls.length);
+
+  const track = document.createElement("div");
+  track.className = "property-gallery-track";
+  track.setAttribute("aria-label", isArabic ? "اسحب لتصفح الصور" : "Swipe to browse photos");
+  if (imageUrls.length > 1) track.tabIndex = 0;
+
+  imageUrls.forEach((url, index) => {
+    const slide = document.createElement("div");
+    slide.className = "property-gallery-slide";
+    const image = document.createElement("img");
+    image.src = url;
+    image.alt = `${title} ${isArabic ? "صورة" : "photo"} ${index + 1}`;
+    image.loading = "lazy";
+    image.width = 720;
+    image.height = 500;
+    image.draggable = false;
+    slide.append(image);
+    track.append(slide);
+  });
+  gallery.append(track, node("span", "property-badge", text.types[property.type] || text.types.other));
+
+  if (imageUrls.length > 1) {
+    const counter = node("span", "gallery-counter", `01 / ${String(imageUrls.length).padStart(2, "0")}`);
+    counter.setAttribute("aria-live", "polite");
+    gallery.append(counter);
+    track.addEventListener("scroll", () => {
+      const index = Math.min(imageUrls.length - 1, Math.round(track.scrollLeft / Math.max(track.clientWidth, 1)));
+      counter.textContent = `${String(index + 1).padStart(2, "0")} / ${String(imageUrls.length).padStart(2, "0")}`;
+    }, { passive: true });
+
+    let pointerStart = 0;
+    let scrollStart = 0;
+    let dragging = false;
+    track.addEventListener("pointerdown", (event) => {
+      gallery.dataset.pauseUntil = String(Date.now() + 8000);
+      if (event.pointerType === "touch" || event.button !== 0) return;
+      dragging = true;
+      pointerStart = event.clientX;
+      scrollStart = track.scrollLeft;
+      track.classList.add("is-dragging");
+      track.setPointerCapture(event.pointerId);
+    });
+    track.addEventListener("pointermove", (event) => {
+      if (dragging) track.scrollLeft = scrollStart - (event.clientX - pointerStart);
+    });
+    const finishDrag = () => {
+      dragging = false;
+      track.classList.remove("is-dragging");
+    };
+    track.addEventListener("pointerup", finishDrag);
+    track.addEventListener("pointercancel", finishDrag);
+    track.addEventListener("focusin", () => { gallery.dataset.pauseUntil = String(Date.now() + 8000); });
+  }
+
+  return gallery;
+}
+
+function startPropertyGalleryAutoplay() {
+  window.clearInterval(galleryAutoplayTimer);
+  if (reduceMotion) return;
+  galleryAutoplayTimer = window.setInterval(() => {
+    if (document.hidden) return;
+    document.querySelectorAll(".property-gallery[data-slide-count]").forEach((gallery) => {
+      const slideCount = Number(gallery.dataset.slideCount);
+      if (slideCount < 2 || gallery.matches(":hover, :focus-within") || Number(gallery.dataset.pauseUntil) > Date.now()) return;
+      const track = gallery.querySelector(".property-gallery-track");
+      const current = Math.round(track.scrollLeft / Math.max(track.clientWidth, 1));
+      const next = (current + 1) % slideCount;
+      track.scrollTo({ left: next * track.clientWidth, behavior: "smooth" });
+    });
+  }, 5600);
+}
+
 function makeCard(item, index) {
   const card = document.createElement("article");
   card.className = "property-card";
   card.style.animationDelay = `${Math.min(index, 8) * 45}ms`;
-  const photo = document.createElement("div");
-  photo.className = "property-photo";
-  const image = document.createElement("img");
-  const candidate = Array.isArray(item.images) ? item.images[0] : item.image;
-  image.src = typeof candidate === "string" && candidate.startsWith("https://") ? candidate : logo;
-  image.alt = item[isArabic ? "titleAr" : "titleEn"] || text.title;
-  image.loading = "lazy";
-  image.width = 720;
-  image.height = 500;
-  photo.append(image, node("span", "property-badge", text.types[item.type] || text.types.other));
+  const photo = createPropertyGallery(item);
   const info = document.createElement("div");
   info.className = "property-info";
+  const title = item[isArabic ? "titleAr" : "titleEn"] || text.title;
+  const location = item[isArabic ? "locationAr" : "locationEn"] || (isArabic ? "الضنية، لبنان" : "Al-Danniyeh, Lebanon");
+  const type = text.types[item.type] || text.types.other;
   info.append(node("p", "property-location", item[isArabic ? "locationAr" : "locationEn"] || (isArabic ? "الضنية، لبنان" : "Al-Danniyeh, Lebanon")));
-  info.append(node("h3", "", item[isArabic ? "titleAr" : "titleEn"] || text.title));
+  info.append(node("h3", "", title));
   const description = item[isArabic ? "descriptionAr" : "descriptionEn"];
   if (description) info.append(node("p", "property-description", description));
   const facts = document.createElement("div");
@@ -179,14 +260,20 @@ function makeCard(item, index) {
   if (facts.childElementCount) info.append(facts);
   const bottom = document.createElement("div");
   bottom.className = "property-bottom";
-  const price = item.price ? `${item.currency === "LBP" ? "LBP " : "$"}${Number(item.price).toLocaleString(isArabic ? "ar-LB" : "en-US")}` : text.request;
+  const showPrice = item.showPrice !== false;
+  const price = showPrice && item.price ? `${item.currency === "LBP" ? "LBP " : "$"}${Number(item.price).toLocaleString(isArabic ? "ar-LB" : "en-US")}` : text.request;
+  const priceElement = node("p", "property-price", price);
+  priceElement.hidden = !showPrice;
   const contact = document.createElement("a");
   contact.className = "property-contact";
-  contact.href = `${whatsapp}?text=${encodeURIComponent(`${text.ask}: ${item[isArabic ? "titleAr" : "titleEn"] || text.title}`)}`;
+  const whatsappMessage = isArabic
+    ? `مرحباً، أرغب بالاستفسار عن ${type} «${title}» في ${location}. هل العقار متاح؟ ${showPrice && item.price ? "أود معرفة المزيد من التفاصيل." : "يرجى تزويدي بالسعر والتفاصيل."}`
+    : `Hello, I’m interested in the ${type.toLowerCase()} “${title}” in ${location}. Is it available? ${showPrice && item.price ? "Please share more details." : "Please share the asking price and details."}`;
+  contact.href = `${whatsapp}?text=${encodeURIComponent(whatsappMessage)}`;
   contact.target = "_blank";
   contact.rel = "noopener noreferrer";
   contact.textContent = text.ask;
-  bottom.append(node("p", "property-price", price), contact);
+  bottom.append(priceElement, contact);
   info.append(bottom);
   card.append(photo, info);
   return card;
@@ -214,6 +301,7 @@ function render() {
     return;
   }
   matching.forEach((item, index) => grid.append(makeCard(item, index)));
+  startPropertyGalleryAutoplay();
 }
 
 function setStatus(message, state) {
@@ -252,35 +340,36 @@ async function loadListings() {
   }
 }
 
-async function submitInquiry(event) {
+function submitInquiry(event) {
   event.preventDefault();
   if (!form.reportValidity()) return;
   feedback.classList.remove("is-error", "is-success");
-  if (!database) {
-    feedback.textContent = isArabic ? "نموذج الرسائل غير مفعّل بعد. يرجى التواصل معنا عبر واتساب أو الهاتف." : "The inquiry form is not connected yet. Please contact us on WhatsApp or by phone.";
-    feedback.classList.add("is-error");
-    return;
-  }
-  const button = form.querySelector("button[type='submit']");
   const fields = new FormData(form);
-  button.disabled = true;
-  feedback.textContent = text.sending;
-  try {
-    await firebase.addDoc(firebase.collection(database, "inquiries"), {
-      name: String(fields.get("name")).trim(), phone: String(fields.get("phone")).trim(),
-      interest: String(fields.get("interest")), message: String(fields.get("message")).trim(),
+  const name = String(fields.get("name")).trim();
+  const phone = String(fields.get("phone")).trim();
+  const interest = String(fields.get("interest"));
+  const interestLabel = form.elements.interest.selectedOptions[0]?.textContent || interest;
+  const message = String(fields.get("message")).trim();
+  const whatsappMessage = isArabic
+    ? `مرحباً، أرغب بالتواصل بخصوص العقارات.\nالاسم: ${name}\nرقم الهاتف: ${phone}\nنوع الاستفسار: ${interestLabel}\nالتفاصيل: ${message}`
+    : `Hello, I’m contacting you about real estate.\nName: ${name}\nPhone: ${phone}\nInquiry: ${interestLabel}\nDetails: ${message}`;
+  const whatsappUrl = `${whatsapp}?text=${encodeURIComponent(whatsappMessage)}`;
+  const whatsappLink = document.createElement("a");
+  whatsappLink.href = whatsappUrl;
+  whatsappLink.target = "_blank";
+  whatsappLink.rel = "noopener noreferrer";
+  whatsappLink.textContent = isArabic ? "افتح واتساب وأرسل الرسالة" : "Open WhatsApp and send your message";
+  feedback.replaceChildren(document.createTextNode(isArabic ? "تم تجهيز رسالتك. " : "Your message is ready. "), whatsappLink);
+  feedback.classList.add("is-success");
+  whatsappLink.click();
+
+  if (database && firebase) {
+    firebase.addDoc(firebase.collection(database, "inquiries"), {
+      name, phone, interest, message,
       source: isArabic ? "website-ar" : "website-en", createdAt: firebase.serverTimestamp()
-    });
-    form.reset();
-    feedback.textContent = text.sent;
-    feedback.classList.add("is-success");
-  } catch (error) {
-    console.error("Unable to save inquiry", error);
-    feedback.textContent = text.failed;
-    feedback.classList.add("is-error");
-  } finally {
-    button.disabled = false;
+    }).catch((error) => console.warn("Unable to save inquiry backup", error));
   }
+  form.reset();
 }
 
 typeFilter?.addEventListener("change", render);

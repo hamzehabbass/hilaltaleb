@@ -65,13 +65,14 @@ Add documents to the `properties` collection. Example shape:
 	"locationEn": "Mrah El Sreij",
 	"areaSqm": 1000,
 	"price": 0,
+	"showPrice": true,
 	"currency": "USD",
 	"images": ["https://your-public-image-url.example/photo.jpg"],
 	"updatedAt": "Firestore timestamp"
 }
 ```
 
-Use the actual price, or `0` for “Price on request”. Supported `type` values: `land`, `house`, `apartment`, `commercial`, `other`. Store public HTTPS image URLs and only enter property details confirmed by the owner. New inquiries are stored in `inquiries`; public clients cannot read or edit those records.
+Use the actual price, or `0` for “Price on request”. Set `showPrice` to `false` to hide the amount on the public card; the card then asks about price through its property-specific WhatsApp link. Supported `type` values: `land`, `house`, `apartment`, `commercial`, `other`. Store public HTTPS image URLs in `images` for swipeable galleries; galleries with multiple photos auto-advance and pause during visitor interaction or reduced-motion preference. The contact form opens a prefilled WhatsApp message for the visitor to send, with a Firestore inquiry backup when connected. Public clients cannot read or edit inquiry records.
 
 ## Before launch
 
