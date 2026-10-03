@@ -26,7 +26,10 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           set -euo pipefail
-          test -n "$FIREBASE_SERVICE_ACCOUNT"
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Add FIREBASE_SERVICE_ACCOUNT in repository Actions secrets before deploying."
+            exit 1
+          fi
           umask 077
           credential_file="$RUNNER_TEMP/firebase-service-account.json"
           trap 'rm -f "$credential_file"' EXIT
