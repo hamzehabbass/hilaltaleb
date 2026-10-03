@@ -23,24 +23,67 @@ if (firebaseConfig?.measurementId) {
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (!reduceMotion) {
   document.documentElement.classList.add("motion-ready");
-  const revealTargets = [...document.querySelectorAll("main > section:not(.hero)")];
+  const revealTargets = [...document.querySelectorAll("main > section:not(.hero), .site-footer")];
   revealTargets.forEach((element, index) => {
     element.setAttribute("data-reveal", index % 2 === 0 ? "right" : "left");
   });
-  const revealInView = () => {
+  const updateReveals = () => {
+    const viewportTop = window.innerHeight * 0.04;
+    const viewportBottom = window.innerHeight * 0.96;
     revealTargets.forEach((element) => {
-      if (element.getBoundingClientRect().top < window.innerHeight * 0.9) {
-        element.classList.add("is-visible");
-      }
+      const bounds = element.getBoundingClientRect();
+      const isVisible = bounds.top < viewportBottom && bounds.bottom > viewportTop;
+      element.classList.toggle("is-visible", isVisible);
     });
-    if (revealTargets.every((element) => element.classList.contains("is-visible"))) {
-      window.removeEventListener("scroll", revealInView);
-      window.removeEventListener("resize", revealInView);
+  };
+  window.addEventListener("scroll", updateReveals, { passive: true });
+  window.addEventListener("resize", updateReveals);
+  window.addEventListener("visibilitychange", updateReveals);
+  window.addEventListener("load", updateReveals, { once: true });
+  document.fonts?.ready.then(updateReveals);
+  document.querySelectorAll(".hero-slide img").forEach((image) => image.addEventListener("load", updateReveals, { once: true }));
+  requestAnimationFrame(() => requestAnimationFrame(updateReveals));
+  updateReveals();
+}
+
+const heroSlider = document.querySelector("[data-hero-slider]");
+if (heroSlider) {
+  const heroSlides = [...heroSlider.querySelectorAll("[data-hero-slide]")];
+  const heroDots = [...heroSlider.querySelectorAll("[data-hero-dot]")];
+  const previousButton = heroSlider.querySelector("[data-hero-prev]");
+  const nextButton = heroSlider.querySelector("[data-hero-next]");
+  const toggleButton = heroSlider.querySelector("[data-hero-toggle]");
+  const counter = heroSlider.querySelector("[data-hero-count]");
+  let currentSlide = 0;
+  let paused = reduceMotion;
+  let slideTimer;
+
+  const showSlide = (index) => {
+    currentSlide = (index + heroSlides.length) % heroSlides.length;
+    heroSlides.forEach((slide, slideIndex) => slide.classList.toggle("is-active", slideIndex === currentSlide));
+    heroDots.forEach((dot, dotIndex) => dot.setAttribute("aria-current", String(dotIndex === currentSlide)));
+    if (counter) counter.textContent = String(currentSlide + 1).padStart(2, "0");
+  };
+
+  const updateSlideTimer = () => {
+    window.clearInterval(slideTimer);
+    if (!paused && !document.hidden) slideTimer = window.setInterval(() => showSlide(currentSlide + 1), 7800);
+    if (toggleButton) {
+      const label = paused ? (isArabic ? "استئناف التبديل التلقائي" : "Resume slideshow") : (isArabic ? "إيقاف التبديل التلقائي" : "Pause slideshow");
+      toggleButton.setAttribute("aria-label", label);
+      toggleButton.setAttribute("title", label);
+      toggleButton.setAttribute("aria-pressed", String(paused));
+      toggleButton.querySelector("span").textContent = paused ? "▶" : "Ⅱ";
     }
   };
-  window.addEventListener("scroll", revealInView, { passive: true });
-  window.addEventListener("resize", revealInView);
-  revealInView();
+
+  previousButton?.addEventListener("click", () => { showSlide(currentSlide - 1); updateSlideTimer(); });
+  nextButton?.addEventListener("click", () => { showSlide(currentSlide + 1); updateSlideTimer(); });
+  heroDots.forEach((dot) => dot.addEventListener("click", () => { showSlide(Number(dot.dataset.heroDot)); updateSlideTimer(); }));
+  toggleButton?.addEventListener("click", () => { paused = !paused; updateSlideTimer(); });
+  document.addEventListener("visibilitychange", updateSlideTimer);
+  showSlide(0);
+  updateSlideTimer();
 }
 const text = isArabic ? {
   types: { land: "أرض", house: "منزل", apartment: "شقة", commercial: "تجاري", other: "عقار" },
