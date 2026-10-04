@@ -310,6 +310,7 @@ function createPropertyGallery(property) {
   imageUrls.forEach((url, index) => {
     const slide = document.createElement("div");
     slide.className = "property-gallery-slide";
+    if (index === 0) slide.classList.add("is-active");
     const image = document.createElement("img");
     image.src = url;
     image.alt = `${title} ${isArabic ? "صورة" : "photo"} ${index + 1}`;
@@ -325,39 +326,25 @@ function createPropertyGallery(property) {
   if (imageUrls.length > 1) {
     const counter = node("span", "gallery-counter", `01 / ${String(imageUrls.length).padStart(2, "0")}`);
     counter.setAttribute("aria-live", "polite");
-    const controls = document.createElement("div");
-    controls.className = "property-gallery-controls";
-    const makeGalleryButton = (direction) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "property-gallery-control";
-      button.textContent = direction < 0 ? "←" : "→";
-      const label = direction < 0
-        ? (isArabic ? "الصورة السابقة" : "Previous photo")
-        : (isArabic ? "الصورة التالية" : "Next photo");
-      button.setAttribute("aria-label", label);
-      button.title = label;
-      button.addEventListener("click", () => {
-        const current = Math.round(track.scrollLeft / Math.max(track.clientWidth, 1));
-        const next = (current + direction + imageUrls.length) % imageUrls.length;
-        gallery.dataset.pauseUntil = String(Date.now() + 8000);
-        track.scrollTo({ left: next * track.clientWidth, behavior: reduceMotion ? "auto" : "smooth" });
-      });
-      return button;
-    };
-    controls.append(makeGalleryButton(-1), makeGalleryButton(1));
-    gallery.append(counter, controls);
+    gallery.append(counter);
+    let scrollUpdateFrame = 0;
     track.addEventListener("scroll", () => {
-      const index = Math.min(imageUrls.length - 1, Math.round(track.scrollLeft / Math.max(track.clientWidth, 1)));
-      counter.textContent = `${String(index + 1).padStart(2, "0")} / ${String(imageUrls.length).padStart(2, "0")}`;
+      window.cancelAnimationFrame(scrollUpdateFrame);
+      scrollUpdateFrame = window.requestAnimationFrame(() => {
+        const activeIndex = Math.min(imageUrls.length - 1, Math.round(track.scrollLeft / Math.max(track.clientWidth, 1)));
+        counter.textContent = `${String(activeIndex + 1).padStart(2, "0")} / ${String(imageUrls.length).padStart(2, "0")}`;
+        track.querySelectorAll(".property-gallery-slide").forEach((slide, slideIndex) => {
+          slide.classList.toggle("is-active", slideIndex === activeIndex);
+        });
+      });
     }, { passive: true });
 
     let pointerStart = 0;
     let scrollStart = 0;
     let dragging = false;
     track.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
       gallery.dataset.pauseUntil = String(Date.now() + 8000);
-      if (event.pointerType === "touch" || event.button !== 0) return;
       dragging = true;
       pointerStart = event.clientX;
       scrollStart = track.scrollLeft;
@@ -368,12 +355,24 @@ function createPropertyGallery(property) {
       if (dragging) track.scrollLeft = scrollStart - (event.clientX - pointerStart);
     });
     const finishDrag = () => {
+      if (!dragging) return;
       dragging = false;
       track.classList.remove("is-dragging");
+      const index = Math.min(imageUrls.length - 1, Math.max(0, Math.round(track.scrollLeft / Math.max(track.clientWidth, 1))));
+      track.scrollTo({ left: index * track.clientWidth, behavior: reduceMotion ? "auto" : "smooth" });
     };
     track.addEventListener("pointerup", finishDrag);
     track.addEventListener("pointercancel", finishDrag);
     track.addEventListener("focusin", () => { gallery.dataset.pauseUntil = String(Date.now() + 8000); });
+    track.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      const current = Math.round(track.scrollLeft / Math.max(track.clientWidth, 1));
+      const direction = event.key === "ArrowRight" ? 1 : -1;
+      const next = (current + direction + imageUrls.length) % imageUrls.length;
+      gallery.dataset.pauseUntil = String(Date.now() + 8000);
+      track.scrollTo({ left: next * track.clientWidth, behavior: reduceMotion ? "auto" : "smooth" });
+    });
   }
 
   return gallery;
