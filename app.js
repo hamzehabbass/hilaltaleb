@@ -45,11 +45,17 @@ function getFirebaseApp(config) {
 
 const firebaseConfig = window.FIREBASE_CONFIG;
 if (firebaseConfig?.measurementId) {
-  Promise.all([
+  const enableAnalytics = () => Promise.all([
     getFirebaseApp(firebaseConfig),
     import("https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js")
   ]).then(([{ app }, analyticsSdk]) => analyticsSdk.getAnalytics(app))
     .catch((error) => console.warn("Firebase Analytics is unavailable in this browser", error));
+  const scheduleAnalytics = () => {
+    if (window.requestIdleCallback) window.requestIdleCallback(enableAnalytics, { timeout: 5000 });
+    else window.setTimeout(enableAnalytics, 1200);
+  };
+  if (document.readyState === "complete") scheduleAnalytics();
+  else window.addEventListener("load", scheduleAnalytics, { once: true });
 }
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -624,8 +630,10 @@ async function loadListings() {
     ]);
     firebase = firestoreSdk;
     database = firebase.getFirestore(app);
-    const result = await firebase.getDocs(firebase.query(firebase.collection(database, "properties"), firebase.where("status", "==", "available")));
-    await loadCampaignSections();
+    const [result] = await Promise.all([
+      firebase.getDocs(firebase.query(firebase.collection(database, "properties"), firebase.where("status", "==", "available"))),
+      loadCampaignSections()
+    ]);
     allAvailableListings = result.docs.map((snapshot) => ({ id: snapshot.id, ...snapshot.data() }));
     listings = isHomepage ? allAvailableListings.filter((item) => item.homeFeatured !== false) : [...allAvailableListings];
     listings.sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
