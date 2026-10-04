@@ -175,6 +175,33 @@ mobileNav?.querySelectorAll("a").forEach((link) => link.addEventListener("click"
   menuButton?.setAttribute("aria-expanded", "false");
 }));
 
+const siteHeader = document.querySelector(".site-header");
+const backToTop = document.createElement("button");
+backToTop.type = "button";
+backToTop.className = "back-to-top";
+backToTop.textContent = "↑";
+backToTop.setAttribute("aria-label", isArabic ? "العودة إلى أعلى الصفحة" : "Back to top");
+backToTop.title = isArabic ? "العودة إلى أعلى الصفحة" : "Back to top";
+document.body.append(backToTop);
+
+const updateScrollChrome = () => {
+  siteHeader?.classList.toggle("is-scrolled", window.scrollY > 20);
+  backToTop.classList.toggle("is-visible", window.scrollY > Math.max(300, window.innerHeight * 0.8));
+};
+
+window.addEventListener("scroll", updateScrollChrome, { passive: true });
+window.addEventListener("resize", updateScrollChrome);
+backToTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" }));
+updateScrollChrome();
+
+const footerBottom = document.querySelector(".site-footer .footer-bottom");
+if (footerBottom) {
+  const siteCredit = document.createElement("span");
+  siteCredit.className = "site-credit";
+  siteCredit.textContent = isArabic ? "تصميم وتطوير الموقع: VerixDev" : "Website by VerixDev";
+  footerBottom.append(siteCredit);
+}
+
 function node(tag, className, value) {
   const element = document.createElement(tag);
   if (className) element.className = className;
