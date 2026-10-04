@@ -248,8 +248,11 @@ if (footerBottom) {
   instagramLink.target = "_blank";
   instagramLink.rel = "noopener noreferrer";
   instagramLink.textContent = isArabic ? "إنستغرام ↗" : "Instagram ↗";
-  const siteCredit = document.createElement("span");
+  const siteCredit = document.createElement("a");
   siteCredit.className = "site-credit";
+  siteCredit.href = "https://verixdev.com";
+  siteCredit.target = "_blank";
+  siteCredit.rel = "noopener noreferrer";
   siteCredit.textContent = isArabic ? "تصميم وتطوير الموقع: VerixDev" : "Website by VerixDev";
   footerBottom.append(instagramLink, siteCredit);
 }
