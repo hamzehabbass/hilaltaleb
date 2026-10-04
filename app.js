@@ -24,12 +24,18 @@ const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").match
 if (!reduceMotion) {
   document.documentElement.classList.add("motion-ready");
   const revealSelector = [
+    "main > section:not(.hero) > *",
     "main > section:not(.hero) .section-topline",
     "main > section:not(.hero) .page-hero-content",
     "main > section:not(.hero) .page-intro",
     "main > section:not(.hero) .section-heading h2",
     "main > section:not(.hero) .section-intro",
     "main > section:not(.hero) .property-card",
+    "main > section:not(.hero) .property-card .property-photo",
+    "main > section:not(.hero) .property-card .property-info > *",
+    "main > section:not(.hero) .listing-controls > *",
+    "main > section:not(.hero) .contact-links > *",
+    "main > section:not(.hero) .video-gallery .facebook-video-figure",
     "main > section:not(.hero) .journey-item",
     "main > section:not(.hero) .manifesto-content",
     "main > section:not(.hero) .manifesto-number",
@@ -44,15 +50,28 @@ if (!reduceMotion) {
     "main > section:not(.hero) .office-panel",
     ".site-footer > *"
   ].join(",");
-  const revealTargets = [...new Set(document.querySelectorAll(revealSelector))];
-  revealTargets.forEach((element, index) => {
-    element.setAttribute("data-reveal", ["up", "right", "left"][index % 3]);
-    element.style.setProperty("--reveal-delay", `${(index % 6) * 65}ms`);
-  });
+  const revealTargets = new Set();
+  const registerRevealTargets = (root = document) => {
+    const targets = [];
+    if (root.matches?.(revealSelector)) targets.push(root);
+    targets.push(...root.querySelectorAll(revealSelector));
+    targets.forEach((element) => {
+      if (revealTargets.has(element)) return;
+      const index = revealTargets.size;
+      revealTargets.add(element);
+      element.setAttribute("data-reveal", ["up", "right", "left"][index % 3]);
+      element.style.setProperty("--reveal-delay", `${(index % 6) * 65}ms`);
+    });
+  };
+  registerRevealTargets();
   const updateReveals = () => {
     const viewportTop = window.innerHeight * 0.04;
     const viewportBottom = window.innerHeight * 0.96;
     revealTargets.forEach((element) => {
+      if (!element.isConnected) {
+        revealTargets.delete(element);
+        return;
+      }
       const bounds = element.getBoundingClientRect();
       const isVisible = bounds.top < viewportBottom && bounds.bottom > viewportTop;
       element.classList.toggle("is-visible", isVisible);
@@ -64,6 +83,18 @@ if (!reduceMotion) {
   window.addEventListener("load", updateReveals, { once: true });
   document.fonts?.ready.then(updateReveals);
   document.querySelectorAll(".hero-slide img").forEach((image) => image.addEventListener("load", updateReveals, { once: true }));
+  const revealObserver = new MutationObserver((mutations) => {
+    let addedTargets = false;
+    mutations.forEach((mutation) => mutation.addedNodes.forEach((node) => {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const previousSize = revealTargets.size;
+        registerRevealTargets(node);
+        addedTargets ||= revealTargets.size > previousSize;
+      }
+    }));
+    if (addedTargets) requestAnimationFrame(updateReveals);
+  });
+  revealObserver.observe(document.body, { childList: true, subtree: true });
   requestAnimationFrame(() => requestAnimationFrame(updateReveals));
   updateReveals();
 }
