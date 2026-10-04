@@ -214,6 +214,53 @@ function updatePropertyGridAccessibility() {
 
 window.addEventListener("resize", updatePropertyGridAccessibility, { passive: true });
 
+let propertyGridPointerId = null;
+let propertyGridPointerStart = 0;
+let propertyGridScrollStart = 0;
+let propertyGridDragging = false;
+let suppressPropertyClick = false;
+
+grid?.addEventListener("pointerdown", (event) => {
+  if (!horizontalPropertyLayout.matches || event.pointerType !== "mouse" || event.button !== 0 || event.target.closest("a, button, input, select, textarea, .property-gallery-track")) return;
+  propertyGridPointerId = event.pointerId;
+  propertyGridPointerStart = event.clientX;
+  propertyGridScrollStart = grid.scrollLeft;
+  propertyGridDragging = false;
+  grid.setPointerCapture(event.pointerId);
+});
+
+grid?.addEventListener("pointermove", (event) => {
+  if (event.pointerId !== propertyGridPointerId) return;
+  const delta = event.clientX - propertyGridPointerStart;
+  if (!propertyGridDragging && Math.abs(delta) > 6) {
+    propertyGridDragging = true;
+    grid.classList.add("is-dragging");
+  }
+  if (!propertyGridDragging) return;
+  const direction = getComputedStyle(grid).direction === "rtl" ? 1 : -1;
+  grid.scrollLeft = propertyGridScrollStart + delta * direction;
+  event.preventDefault();
+});
+
+const finishPropertyGridDrag = () => {
+  if (propertyGridDragging) {
+    suppressPropertyClick = true;
+    window.setTimeout(() => { suppressPropertyClick = false; }, 0);
+  }
+  propertyGridPointerId = null;
+  propertyGridDragging = false;
+  grid?.classList.remove("is-dragging");
+};
+
+grid?.addEventListener("pointerup", finishPropertyGridDrag);
+grid?.addEventListener("pointercancel", finishPropertyGridDrag);
+grid?.addEventListener("click", (event) => {
+  if (!suppressPropertyClick) return;
+  event.preventDefault();
+  event.stopPropagation();
+  suppressPropertyClick = false;
+}, true);
+
 document.querySelectorAll("[data-year]").forEach((element) => { element.textContent = new Date().getFullYear(); });
 const menuButton = document.querySelector(".menu-toggle");
 const mobileNav = document.querySelector("#mobile-nav");
