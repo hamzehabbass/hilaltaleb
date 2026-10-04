@@ -223,13 +223,34 @@ if (isHomepage) {
 }
 
 const siteHeader = document.querySelector(".site-header");
+const whatsappContact = document.createElement("a");
+whatsappContact.className = "floating-whatsapp";
+whatsappContact.href = `${whatsapp}?text=${encodeURIComponent(isArabic ? "مرحباً هلال، أود الاستفسار عن أحد العقارات المنشورة على الموقع." : "Hello Hilal, I'd like to ask about a property on your website.")}`;
+whatsappContact.target = "_blank";
+whatsappContact.rel = "noopener noreferrer";
+whatsappContact.setAttribute("aria-label", isArabic ? "راسل هلال على واتساب" : "Message Hilal on WhatsApp");
+whatsappContact.title = isArabic ? "راسل هلال على واتساب" : "Message Hilal on WhatsApp";
+const whatsappIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+whatsappIcon.setAttribute("viewBox", "0 0 24 24");
+whatsappIcon.setAttribute("fill", "none");
+whatsappIcon.setAttribute("stroke", "currentColor");
+whatsappIcon.setAttribute("stroke-width", "1.8");
+whatsappIcon.setAttribute("stroke-linecap", "round");
+whatsappIcon.setAttribute("stroke-linejoin", "round");
+whatsappIcon.setAttribute("aria-hidden", "true");
+const whatsappBubble = document.createElementNS("http://www.w3.org/2000/svg", "path");
+whatsappBubble.setAttribute("d", "M20 11.5a8.5 8.5 0 0 1-12.1 7.7L4 20l.8-4A8.5 8.5 0 1 1 20 11.5Z");
+const whatsappPhone = document.createElementNS("http://www.w3.org/2000/svg", "path");
+whatsappPhone.setAttribute("d", "M9 8.5c.2-.6.4-.6.7-.6h.7c.2 0 .4.3.5.6l.5 1.2c.1.3.1.5-.1.7l-.5.6c-.2.2-.1.4 0 .7.8 1.4 1.9 2.5 3.4 3.3.3.1.5.1.7-.1l.7-.8c.2-.2.4-.3.7-.2l1.2.6c.3.1.5.3.5.5 0 .8-.4 1.6-1 2-.7.5-1.6.5-2.5.2-2.8-.8-5.7-3.6-6.5-6.3-.3-.9-.2-1.8.3-2.4z");
+whatsappIcon.append(whatsappBubble, whatsappPhone);
+whatsappContact.append(whatsappIcon);
 const backToTop = document.createElement("button");
 backToTop.type = "button";
 backToTop.className = "back-to-top";
 backToTop.textContent = "↑";
 backToTop.setAttribute("aria-label", isArabic ? "العودة إلى أعلى الصفحة" : "Back to top");
 backToTop.title = isArabic ? "العودة إلى أعلى الصفحة" : "Back to top";
-document.body.append(backToTop);
+document.body.append(whatsappContact, backToTop);
 
 const updateScrollChrome = () => {
   siteHeader?.classList.toggle("is-scrolled", window.scrollY > 20);
