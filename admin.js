@@ -149,7 +149,7 @@ function resetEditor() {
 function editProperty(property) {
   editingId = property.id;
   const fields = propertyForm.elements;
-  ["titleEn", "titleAr", "type", "status", "locationKey", "areaSqm", "locationEn", "locationAr", "price", "currency", "bedrooms", "bathrooms", "descriptionEn", "descriptionAr"].forEach((name) => {
+  ["titleEn", "titleAr", "type", "status", "locationKey", "areaSqm", "locationEn", "locationAr", "price", "currency", "bedrooms", "bathrooms", "descriptionEn", "descriptionAr", "videoUrl"].forEach((name) => {
     fields[name].value = property[name] ?? (name === "price" || name === "bedrooms" || name === "bathrooms" ? "0" : "");
   });
   fields.showPrice.checked = property.showPrice !== false;
@@ -208,6 +208,7 @@ async function saveProperty(event) {
       bathrooms: Number(fields.get("bathrooms")) || 0,
       descriptionEn: String(fields.get("descriptionEn")).trim(),
       descriptionAr: String(fields.get("descriptionAr")).trim(),
+      videoUrl: String(fields.get("videoUrl")).trim(),
       ...photos,
       updatedAt: databaseApi.serverTimestamp()
     };

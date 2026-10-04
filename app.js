@@ -35,7 +35,6 @@ if (!reduceMotion) {
     "main > section:not(.hero) .property-card .property-info > *",
     "main > section:not(.hero) .listing-controls > *",
     "main > section:not(.hero) .contact-links > *",
-    "main > section:not(.hero) .video-gallery .facebook-video-figure",
     "main > section:not(.hero) .journey-item",
     "main > section:not(.hero) .manifesto-content",
     "main > section:not(.hero) .manifesto-number",
@@ -194,6 +193,33 @@ function createPropertyGallery(property) {
     ? property.images.filter((url) => typeof url === "string" && url.startsWith("https://"))
     : [];
   if (!imageUrls.length && typeof property.image === "string" && property.image.startsWith("https://")) imageUrls.push(property.image);
+  if (!imageUrls.length && typeof property.videoUrl === "string") {
+    try {
+      const videoUrl = new URL(property.videoUrl);
+      const isFacebookHost = videoUrl.hostname === "facebook.com" || videoUrl.hostname.endsWith(".facebook.com");
+      if (isFacebookHost && /^\/reel\/\d+\/?$/.test(videoUrl.pathname)) {
+        const embedUrl = new URL("https://www.facebook.com/plugins/video.php");
+        embedUrl.searchParams.set("height", "315");
+        embedUrl.searchParams.set("href", new URL(videoUrl.pathname, "https://www.facebook.com").href);
+        embedUrl.searchParams.set("show_text", "false");
+        embedUrl.searchParams.set("width", "560");
+        embedUrl.searchParams.set("t", "0");
+        const frame = document.createElement("div");
+        frame.className = "property-video-frame";
+        const iframe = document.createElement("iframe");
+        iframe.src = embedUrl.href;
+        iframe.title = isArabic ? `فيديو العقار ${title}` : `Property video for ${title}`;
+        iframe.loading = "lazy";
+        iframe.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share";
+        iframe.allowFullscreen = true;
+        iframe.referrerPolicy = "strict-origin-when-cross-origin";
+        frame.append(iframe);
+        gallery.append(frame, node("span", "property-badge", text.types[property.type] || text.types.other));
+        gallery.dataset.slideCount = "1";
+        return gallery;
+      }
+    } catch {}
+  }
   if (!imageUrls.length) imageUrls.push(logo);
   gallery.dataset.slideCount = String(imageUrls.length);
 

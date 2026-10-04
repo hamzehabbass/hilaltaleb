@@ -25,6 +25,7 @@
             <label class="admin-toggle"><span><strong>Show price on the public listing</strong><small>When off, visitors see “Price on request” and can ask by WhatsApp.</small></span><input name="showPrice" type="checkbox" checked></label>
             <div class="admin-field-grid"><label>Bedrooms<input name="bedrooms" type="number" min="0" step="1" value="0"></label><label>Bathrooms<input name="bathrooms" type="number" min="0" step="1" value="0"></label></div>
             <div class="admin-field-grid"><label>Description in English<textarea name="descriptionEn" maxlength="1200" rows="3"></textarea></label><label>الوصف بالعربية<textarea name="descriptionAr" maxlength="1200" rows="3" dir="rtl"></textarea></label></div>
+            <label>Facebook Reel URL (optional)<input name="videoUrl" type="url" maxlength="500" placeholder="https://web.facebook.com/reel/..."><small>Played in the property card when no photos are uploaded.</small></label>
             <label class="photo-picker" for="property-photos"><span><strong>Property photos</strong><small>JPG, PNG, or WebP · max 8 MB each</small></span><span class="photo-picker-action">Choose photos</span><input id="property-photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple></label>
             <div class="photo-preview" id="photo-preview" aria-live="polite"></div>
             <div class="admin-form-footer"><p class="admin-feedback" id="property-feedback" role="status" aria-live="polite">Only available listings appear on the public site.</p><button class="admin-primary" id="save-property" type="submit">Publish property</button></div>
@@ -34,5 +35,5 @@
       </div>
     </section>
   </main>
-  <script src="/firebase-config.js"></script><script type="module" src="/admin.js"></script>
+  <script src="/firebase-config.js"></script><script type="module" src="/admin.js?v=2"></script>
 </body></html>
