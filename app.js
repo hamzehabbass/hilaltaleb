@@ -185,6 +185,7 @@ const text = isArabic ? {
   count: (n) => `${n} ${n === 1 ? "property" : "properties"}`, title: "Property in Al-Danniyeh", request: "Price on request", sqm: "sqm", bedrooms: "bedrooms", baths: "bathrooms", ask: "Ask about this property", noListings: "There are no published listings just yet. Tell us what you are looking for and we’ll be in touch when a match becomes available.", noFeatured: "No properties are pinned to the homepage yet. Browse all available properties.", noMatch: "No properties match those filters. Try another selection or tell us what you are looking for.", contact: "Ask us about available properties", unavailable: "Properties could not be loaded right now. You can ask us directly on WhatsApp.", loaded: "Available properties", invalid: "Please complete every field with valid information.", sent: "Thank you. Your inquiry has been received and we’ll be in touch soon.", failed: "Your message could not be sent. Please contact us on WhatsApp or by phone.", sending: "Sending your inquiry..."
 };
 const grid = document.querySelector("#property-grid");
+const horizontalPropertyLayout = window.matchMedia("(max-width: 900px)");
 const typeFilter = document.querySelector("#filter-type");
 const areaFilter = document.querySelector("#filter-location");
 const status = document.querySelector("#data-status");
@@ -202,6 +203,16 @@ let allAvailableListings = [];
 let database;
 let firebase;
 let galleryAutoplayTimer;
+
+function updatePropertyGridAccessibility() {
+  if (!grid) return;
+  const hasMultipleCards = grid.querySelectorAll(".property-card").length > 1;
+  grid.setAttribute("role", "region");
+  grid.setAttribute("aria-label", isArabic ? "تصفح العقارات المتاحة" : "Browse available properties");
+  grid.tabIndex = horizontalPropertyLayout.matches && hasMultipleCards ? 0 : -1;
+}
+
+window.addEventListener("resize", updatePropertyGridAccessibility, { passive: true });
 
 document.querySelectorAll("[data-year]").forEach((element) => { element.textContent = new Date().getFullYear(); });
 const menuButton = document.querySelector(".menu-toggle");
@@ -501,9 +512,11 @@ function render() {
     link.textContent = text.contact;
     empty.append(link);
     grid.append(empty);
+    updatePropertyGridAccessibility();
     return;
   }
   matching.forEach((item, index) => grid.append(makeCard(item, index)));
+  updatePropertyGridAccessibility();
   startPropertyGalleryAutoplay();
 }
 
