@@ -1,4 +1,36 @@
 const isArabic = document.documentElement.lang === "ar";
+const sitePreloader = document.createElement("div");
+sitePreloader.className = "site-preloader";
+sitePreloader.setAttribute("role", "status");
+sitePreloader.setAttribute("aria-live", "polite");
+const preloaderLogo = document.createElement("img");
+preloaderLogo.src = "/395185985_347165891026494_3547980265205536502_n.jpg";
+preloaderLogo.alt = "";
+preloaderLogo.width = 62;
+preloaderLogo.height = 62;
+const preloaderLabel = document.createElement("p");
+preloaderLabel.textContent = isArabic ? "جارٍ تجهيز الموقع" : "Preparing your visit";
+const preloaderSpinner = document.createElement("span");
+preloaderSpinner.className = "site-preloader-spinner";
+preloaderSpinner.setAttribute("aria-hidden", "true");
+sitePreloader.append(preloaderLogo, preloaderSpinner, preloaderLabel);
+document.body.append(sitePreloader);
+const preloaderStartedAt = performance.now();
+let preloaderReleased = false;
+const releasePreloader = () => {
+  if (preloaderReleased) return;
+  preloaderReleased = true;
+  const minimumDuration = 320;
+  window.setTimeout(() => {
+    document.documentElement.classList.add("site-ready");
+    sitePreloader.setAttribute("aria-hidden", "true");
+    window.setTimeout(() => sitePreloader.remove(), reduceMotion ? 0 : 650);
+  }, Math.max(0, minimumDuration - (performance.now() - preloaderStartedAt)));
+};
+window.addEventListener("load", () => {
+  if (!document.querySelector("#property-grid")) releasePreloader();
+}, { once: true });
+window.setTimeout(releasePreloader, 8000);
 let firebaseAppPromise;
 
 function getFirebaseApp(config) {
@@ -544,6 +576,7 @@ async function loadListings() {
     listings = [];
     allAvailableListings = [];
     render();
+    releasePreloader();
     return;
   }
   try {
@@ -563,10 +596,12 @@ async function loadListings() {
     locations.forEach((label, key) => areaFilter.add(new Option(label, key)));
     setStatus(text.loaded, "live");
     render();
+    releasePreloader();
   } catch (error) {
     console.error("Unable to load properties", error);
     setStatus(isArabic ? "تعذر الاتصال بقاعدة البيانات" : "Could not connect to Firebase", "error");
     grid.replaceChildren(node("div", "error-state", text.unavailable));
+    releasePreloader();
   }
 }
 
