@@ -9,6 +9,10 @@ const inventoryMessage = document.querySelector("#inventory-message");
 const photoInput = document.querySelector("#property-photos");
 const photoPreview = document.querySelector("#photo-preview");
 const signoutButton = document.querySelector("#signout-button");
+const campaignForm = document.querySelector("#campaign-form");
+const campaignFeedback = document.querySelector("#campaign-feedback");
+const campaignRows = document.querySelector("#campaign-rows");
+const campaignMessage = document.querySelector("#campaign-message");
 const maxPhotoBytes = 8 * 1024 * 1024;
 let authApi;
 let databaseApi;
@@ -17,7 +21,9 @@ let auth;
 let database;
 let storage;
 let listings = [];
+let campaigns = [];
 let editingId = null;
+let editingCampaignId = null;
 let retainedImages = [];
 let retainedPaths = [];
 let originalPaths = [];
@@ -68,6 +74,13 @@ function renderInventory() {
     badge.textContent = property.status || "draft";
     statusCell.append(badge);
     row.append(statusCell);
+    const homepageCell = document.createElement("td");
+    const homepageBadge = document.createElement("span");
+    const isFeatured = property.homeFeatured !== false;
+    homepageBadge.className = `status-chip ${isFeatured ? "available" : "draft"}`;
+    homepageBadge.textContent = isFeatured ? "Pinned" : "Catalog";
+    homepageCell.append(homepageBadge);
+    row.append(homepageCell);
     addCell(row, formatPrice(property));
     const actionsCell = document.createElement("td");
     const actions = document.createElement("div");
@@ -90,6 +103,57 @@ function renderInventory() {
   });
 }
 
+function campaignKindLabel(kind) {
+  return ({ ad: "Advertisement", sale: "Sale", offer: "Offer" })[kind] || "Advertisement";
+}
+
+function renderCampaignInventory() {
+  campaignRows.replaceChildren();
+  document.querySelector("#campaign-count").textContent = String(campaigns.length);
+  if (!campaigns.length) {
+    campaignMessage.textContent = "No campaigns yet. Create an ad, sale, or offer to show it on the homepage.";
+    return;
+  }
+  campaignMessage.textContent = `${campaigns.length} saved campaigns.`;
+  campaigns.forEach((campaign) => {
+    const row = document.createElement("tr");
+    const titleCell = document.createElement("td");
+    const title = document.createElement("span");
+    title.className = "inventory-title";
+    title.textContent = campaign.titleEn || campaign.titleAr || "Untitled campaign";
+    const secondaryTitle = document.createElement("span");
+    secondaryTitle.className = "inventory-location";
+    secondaryTitle.textContent = campaign.titleAr || "";
+    titleCell.append(title, secondaryTitle);
+    row.append(titleCell);
+    addCell(row, campaignKindLabel(campaign.kind));
+    const statusCell = document.createElement("td");
+    const statusChip = document.createElement("span");
+    statusChip.className = `status-chip ${campaign.status === "active" ? "available" : "draft"}`;
+    statusChip.textContent = campaign.status || "draft";
+    statusCell.append(statusChip);
+    row.append(statusCell);
+    const actionsCell = document.createElement("td");
+    const actions = document.createElement("div");
+    actions.className = "row-actions";
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.dataset.action = "edit-campaign";
+    edit.dataset.id = campaign.id;
+    edit.textContent = "Edit";
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "delete-property";
+    remove.dataset.action = "delete-campaign";
+    remove.dataset.id = campaign.id;
+    remove.textContent = "Delete";
+    actions.append(edit, remove);
+    actionsCell.append(actions);
+    row.append(actionsCell);
+    campaignRows.append(row);
+  });
+}
+
 async function refreshInventory() {
   inventoryMessage.textContent = "Loading properties...";
   try {
@@ -100,6 +164,103 @@ async function refreshInventory() {
   } catch (error) {
     console.error("Unable to load inventory", error);
     inventoryMessage.textContent = "Could not load inventory. Confirm this account UID is authorized in firestore.rules.";
+  }
+}
+
+async function refreshCampaigns() {
+  campaignMessage.textContent = "Loading campaigns...";
+  try {
+    const result = await databaseApi.getDocs(databaseApi.collection(database, "campaigns"));
+    campaigns = result.docs.map((snapshot) => ({ id: snapshot.id, ...snapshot.data() }));
+    campaigns.sort((first, second) => (second.updatedAt?.seconds || 0) - (first.updatedAt?.seconds || 0));
+    renderCampaignInventory();
+  } catch (error) {
+    console.error("Unable to load campaigns", error);
+    campaignMessage.textContent = "Could not load campaigns. Confirm this account is authorized in firestore.rules.";
+  }
+}
+
+function resetCampaignEditor() {
+  campaignForm.reset();
+  editingCampaignId = null;
+  document.querySelector("#campaign-editor-title").textContent = "Create an ad or offer";
+  document.querySelector("#save-campaign").textContent = "Save campaign";
+  setFeedback(campaignFeedback, "Drafts stay private until activated.");
+}
+
+function editCampaign(campaign) {
+  editingCampaignId = campaign.id;
+  const fields = campaignForm.elements;
+  ["kind", "status", "titleEn", "titleAr", "descriptionEn", "descriptionAr", "imageUrl", "ctaLabelEn", "ctaLabelAr", "ctaUrl"].forEach((name) => {
+    fields[name].value = campaign[name] || "";
+  });
+  document.querySelector("#campaign-editor-title").textContent = "Edit campaign";
+  document.querySelector("#save-campaign").textContent = "Save campaign";
+  setFeedback(campaignFeedback, "Update the campaign and save your changes.");
+  campaignForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function normalizeHttpsUrl(value, fieldName) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  let url;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    throw new Error(`${fieldName} must be a valid HTTPS URL.`);
+  }
+  if (url.protocol !== "https:") throw new Error(`${fieldName} must use HTTPS.`);
+  return url.href;
+}
+
+async function saveCampaign(event) {
+  event.preventDefault();
+  if (!campaignForm.reportValidity()) return;
+  const button = document.querySelector("#save-campaign");
+  const fields = new FormData(campaignForm);
+  const campaignId = editingCampaignId || databaseApi.doc(databaseApi.collection(database, "campaigns")).id;
+  button.disabled = true;
+  setFeedback(campaignFeedback, "Saving campaign...");
+  try {
+    const campaign = {
+      kind: String(fields.get("kind")),
+      status: String(fields.get("status")),
+      titleEn: String(fields.get("titleEn")).trim(),
+      titleAr: String(fields.get("titleAr")).trim(),
+      descriptionEn: String(fields.get("descriptionEn")).trim(),
+      descriptionAr: String(fields.get("descriptionAr")).trim(),
+      imageUrl: normalizeHttpsUrl(fields.get("imageUrl"), "Image URL"),
+      ctaLabelEn: String(fields.get("ctaLabelEn")).trim(),
+      ctaLabelAr: String(fields.get("ctaLabelAr")).trim(),
+      ctaUrl: normalizeHttpsUrl(fields.get("ctaUrl"), "Button link"),
+      updatedAt: databaseApi.serverTimestamp()
+    };
+    if (editingCampaignId) {
+      await databaseApi.updateDoc(databaseApi.doc(database, "campaigns", campaignId), campaign);
+    } else {
+      campaign.createdAt = databaseApi.serverTimestamp();
+      await databaseApi.setDoc(databaseApi.doc(database, "campaigns", campaignId), campaign);
+    }
+    resetCampaignEditor();
+    setFeedback(campaignFeedback, "Campaign saved successfully.", "success");
+    await refreshCampaigns();
+  } catch (error) {
+    console.error("Unable to save campaign", error);
+    setFeedback(campaignFeedback, error.message || "Could not save campaign. Check Firebase rules and try again.", "error");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function removeCampaign(campaign) {
+  if (!window.confirm(`Delete “${campaign.titleEn || campaign.titleAr}”?`)) return;
+  campaignMessage.textContent = "Deleting campaign...";
+  try {
+    await databaseApi.deleteDoc(databaseApi.doc(database, "campaigns", campaign.id));
+    await refreshCampaigns();
+  } catch (error) {
+    console.error("Unable to delete campaign", error);
+    campaignMessage.textContent = "Could not delete campaign. Check the Firebase admin UID in your rules.";
   }
 }
 
@@ -149,9 +310,10 @@ function resetEditor() {
 function editProperty(property) {
   editingId = property.id;
   const fields = propertyForm.elements;
-  ["titleEn", "titleAr", "type", "status", "locationKey", "areaSqm", "locationEn", "locationAr", "price", "currency", "bedrooms", "bathrooms", "descriptionEn", "descriptionAr", "videoUrl"].forEach((name) => {
-    fields[name].value = property[name] ?? (name === "price" || name === "bedrooms" || name === "bathrooms" ? "0" : "");
+  ["titleEn", "titleAr", "type", "status", "locationKey", "areaSqm", "locationEn", "locationAr", "price", "currency", "bedrooms", "bathrooms", "kitchens", "balconies", "descriptionEn", "descriptionAr", "videoUrl"].forEach((name) => {
+    fields[name].value = property[name] ?? (name === "price" || name === "bedrooms" || name === "bathrooms" || name === "kitchens" || name === "balconies" ? "0" : "");
   });
+  fields.homeFeatured.checked = property.homeFeatured !== false;
   fields.showPrice.checked = property.showPrice !== false;
   retainedImages = [...(property.images || [])];
   retainedPaths = [...(property.imagePaths || [])];
@@ -203,9 +365,12 @@ async function saveProperty(event) {
       areaSqm: Number(fields.get("areaSqm")) || 0,
       price: Number(fields.get("price")) || 0,
       showPrice: fields.get("showPrice") === "on",
+      homeFeatured: fields.get("homeFeatured") === "on",
       currency: String(fields.get("currency")),
       bedrooms: Number(fields.get("bedrooms")) || 0,
       bathrooms: Number(fields.get("bathrooms")) || 0,
+      kitchens: Number(fields.get("kitchens")) || 0,
+      balconies: Number(fields.get("balconies")) || 0,
       descriptionEn: String(fields.get("descriptionEn")).trim(),
       descriptionAr: String(fields.get("descriptionAr")).trim(),
       videoUrl: String(fields.get("videoUrl")).trim(),
@@ -289,6 +454,19 @@ async function startAdmin() {
   propertyForm.addEventListener("submit", saveProperty);
   document.querySelector("#reset-form").addEventListener("click", resetEditor);
   document.querySelector("#refresh-list").addEventListener("click", refreshInventory);
+  campaignForm.addEventListener("submit", saveCampaign);
+  document.querySelector("#reset-campaign").addEventListener("click", resetCampaignEditor);
+  document.querySelector("#refresh-campaigns").addEventListener("click", refreshCampaigns);
+  document.querySelectorAll("[data-admin-tab]").forEach((tab) => tab.addEventListener("click", () => {
+    document.querySelectorAll("[data-admin-tab]").forEach((otherTab) => {
+      const isSelected = otherTab === tab;
+      otherTab.classList.toggle("is-active", isSelected);
+      otherTab.setAttribute("aria-selected", String(isSelected));
+    });
+    document.querySelectorAll("[data-admin-panel]").forEach((panel) => {
+      panel.hidden = panel.dataset.adminPanel !== tab.dataset.adminTab;
+    });
+  }));
   photoInput.addEventListener("change", () => {
     const added = [...photoInput.files];
     const invalid = added.find((file) => !file.type.match(/^image\/(jpeg|png|webp)$/) || file.size > maxPhotoBytes);
@@ -321,6 +499,14 @@ async function startAdmin() {
     if (button.dataset.action === "edit") editProperty(property);
     if (button.dataset.action === "delete") removeProperty(property);
   });
+  campaignRows.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-action]");
+    if (!button) return;
+    const campaign = campaigns.find((item) => item.id === button.dataset.id);
+    if (!campaign) return;
+    if (button.dataset.action === "edit-campaign") editCampaign(campaign);
+    if (button.dataset.action === "delete-campaign") removeCampaign(campaign);
+  });
   document.querySelector("#copy-uid").addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(auth.currentUser.uid);
@@ -339,7 +525,7 @@ async function startAdmin() {
     document.querySelector("#signed-in-email").textContent = user.email || "Authenticated user";
     document.querySelector("#admin-uid").textContent = user.uid;
     document.querySelector("#uid-hint").hidden = false;
-    await refreshInventory();
+    await Promise.all([refreshInventory(), refreshCampaigns()]);
   });
 }
 

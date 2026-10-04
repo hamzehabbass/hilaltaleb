@@ -31,6 +31,7 @@ if (!reduceMotion) {
     "main > section:not(.hero) .section-heading h2",
     "main > section:not(.hero) .section-intro",
     "main > section:not(.hero) .property-card",
+    "main > section:not(.hero) .campaign-card",
     "main > section:not(.hero) .property-card .property-photo",
     "main > section:not(.hero) .property-card .property-info > *",
     "main > section:not(.hero) .listing-controls > *",
@@ -137,12 +138,13 @@ if (heroSlider) {
   showSlide(0);
   updateSlideTimer();
 }
+const isHomepage = Boolean(heroSlider);
 const text = isArabic ? {
   types: { land: "أرض", house: "منزل", apartment: "شقة", commercial: "تجاري", other: "عقار" },
-  count: (n) => `${n} عقار`, title: "عقار في الضنية", request: "السعر عند الطلب", sqm: "م²", bedrooms: "غرف نوم", baths: "حمامات", ask: "استفسر عن العقار", noListings: "لا توجد عقارات منشورة حالياً. أخبرنا بما تبحث عنه وسنتواصل معك عند توفر خيارات مناسبة.", noMatch: "لا توجد عقارات تطابق هذه التصفية. جرّب اختياراً آخر أو أخبرنا بما تبحث عنه.", contact: "تواصل معنا لمعرفة العقارات المتاحة", unavailable: "تعذر تحميل العقارات الآن. يمكنك الاستفسار مباشرة عبر واتساب.", loaded: "العقارات المتاحة الآن", invalid: "يرجى ملء جميع الحقول بشكل صحيح.", sent: "شكراً لك. وصلنا استفسارك وسنتواصل معك قريباً.", failed: "تعذر إرسال الرسالة الآن. تواصل معنا عبر واتساب أو الهاتف.", sending: "جارٍ إرسال استفسارك..."
+  count: (n) => `${n} عقار`, title: "عقار في الضنية", request: "السعر عند الطلب", sqm: "م²", bedrooms: "غرف نوم", baths: "حمامات", ask: "استفسر عن العقار", noListings: "لا توجد عقارات منشورة حالياً. أخبرنا بما تبحث عنه وسنتواصل معك عند توفر خيارات مناسبة.", noFeatured: "لا توجد عقارات مثبتة على الصفحة الرئيسية حالياً. تصفح جميع العقارات المتاحة.", noMatch: "لا توجد عقارات تطابق هذه التصفية. جرّب اختياراً آخر أو أخبرنا بما تبحث عنه.", contact: "تواصل معنا لمعرفة العقارات المتاحة", unavailable: "تعذر تحميل العقارات الآن. يمكنك الاستفسار مباشرة عبر واتساب.", loaded: "العقارات المتاحة الآن", invalid: "يرجى ملء جميع الحقول بشكل صحيح.", sent: "شكراً لك. وصلنا استفسارك وسنتواصل معك قريباً.", failed: "تعذر إرسال الرسالة الآن. تواصل معنا عبر واتساب أو الهاتف.", sending: "جارٍ إرسال استفسارك..."
 } : {
   types: { land: "Land", house: "House", apartment: "Apartment", commercial: "Commercial", other: "Property" },
-  count: (n) => `${n} ${n === 1 ? "property" : "properties"}`, title: "Property in Al-Danniyeh", request: "Price on request", sqm: "sqm", bedrooms: "bedrooms", baths: "bathrooms", ask: "Ask about this property", noListings: "There are no published listings just yet. Tell us what you are looking for and we’ll be in touch when a match becomes available.", noMatch: "No properties match those filters. Try another selection or tell us what you are looking for.", contact: "Ask us about available properties", unavailable: "Properties could not be loaded right now. You can ask us directly on WhatsApp.", loaded: "Available properties", invalid: "Please complete every field with valid information.", sent: "Thank you. Your inquiry has been received and we’ll be in touch soon.", failed: "Your message could not be sent. Please contact us on WhatsApp or by phone.", sending: "Sending your inquiry..."
+  count: (n) => `${n} ${n === 1 ? "property" : "properties"}`, title: "Property in Al-Danniyeh", request: "Price on request", sqm: "sqm", bedrooms: "bedrooms", baths: "bathrooms", ask: "Ask about this property", noListings: "There are no published listings just yet. Tell us what you are looking for and we’ll be in touch when a match becomes available.", noFeatured: "No properties are pinned to the homepage yet. Browse all available properties.", noMatch: "No properties match those filters. Try another selection or tell us what you are looking for.", contact: "Ask us about available properties", unavailable: "Properties could not be loaded right now. You can ask us directly on WhatsApp.", loaded: "Available properties", invalid: "Please complete every field with valid information.", sent: "Thank you. Your inquiry has been received and we’ll be in touch soon.", failed: "Your message could not be sent. Please contact us on WhatsApp or by phone.", sending: "Sending your inquiry..."
 };
 const grid = document.querySelector("#property-grid");
 const typeFilter = document.querySelector("#filter-type");
@@ -158,6 +160,7 @@ if (["buy", "sell", "other"].includes(requestedInterest) && inquiryInterest) {
 const whatsapp = "https://wa.me/96181340203";
 const logo = "/395185985_347165891026494_3547980265205536502_n.jpg";
 let listings = [];
+let allAvailableListings = [];
 let database;
 let firebase;
 let galleryAutoplayTimer;
@@ -174,6 +177,18 @@ mobileNav?.querySelectorAll("a").forEach((link) => link.addEventListener("click"
   mobileNav.hidden = true;
   menuButton?.setAttribute("aria-expanded", "false");
 }));
+
+if (isHomepage) {
+  document.querySelectorAll(".listing-controls label").forEach((label) => { label.hidden = true; });
+  const listingFoot = document.querySelector(".listing-foot");
+  if (listingFoot) {
+    const allPropertiesLink = document.createElement("a");
+    allPropertiesLink.className = "text-link listing-all-link";
+    allPropertiesLink.href = isArabic ? "/properties.html" : "/en-properties.html";
+    allPropertiesLink.textContent = isArabic ? "تصفح جميع العقارات ↗" : "See all properties ↗";
+    listingFoot.append(allPropertiesLink);
+  }
+}
 
 const siteHeader = document.querySelector(".site-header");
 const backToTop = document.createElement("button");
@@ -196,10 +211,15 @@ updateScrollChrome();
 
 const footerBottom = document.querySelector(".site-footer .footer-bottom");
 if (footerBottom) {
+  const instagramLink = document.createElement("a");
+  instagramLink.href = "https://www.instagram.com/hilalsamirtaleb?stkn=bmphdXczZDBpaG8y";
+  instagramLink.target = "_blank";
+  instagramLink.rel = "noopener noreferrer";
+  instagramLink.textContent = isArabic ? "إنستغرام ↗" : "Instagram ↗";
   const siteCredit = document.createElement("span");
   siteCredit.className = "site-credit";
   siteCredit.textContent = isArabic ? "تصميم وتطوير الموقع: VerixDev" : "Website by VerixDev";
-  footerBottom.append(siteCredit);
+  footerBottom.append(instagramLink, siteCredit);
 }
 
 function node(tag, className, value) {
@@ -338,9 +358,30 @@ function makeCard(item, index) {
   if (description) info.append(node("p", "property-description", description));
   const facts = document.createElement("div");
   facts.className = "property-facts";
-  if (Number(item.areaSqm) > 0) facts.append(node("span", "", `${Number(item.areaSqm).toLocaleString(isArabic ? "ar-LB" : "en-US")} ${text.sqm}`));
-  if (Number(item.bedrooms) > 0) facts.append(node("span", "", `${item.bedrooms} ${text.bedrooms}`));
-  if (Number(item.bathrooms) > 0) facts.append(node("span", "", `${item.bathrooms} ${text.baths}`));
+  const appendFact = (name, amount, label, iconPath) => {
+    if (Number(amount) <= 0) return;
+    const fact = document.createElement("span");
+    fact.className = `property-fact property-fact-${name}`;
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("aria-hidden", "true");
+    icon.setAttribute("focusable", "false");
+    icon.setAttribute("fill", "none");
+    icon.setAttribute("stroke", "currentColor");
+    icon.setAttribute("stroke-width", "1.7");
+    icon.setAttribute("stroke-linecap", "round");
+    icon.setAttribute("stroke-linejoin", "round");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", iconPath);
+    icon.append(path);
+    fact.append(icon, node("span", "", `${Number(amount).toLocaleString(isArabic ? "ar-LB" : "en-US")} ${label}`));
+    facts.append(fact);
+  };
+  appendFact("area", item.areaSqm, text.sqm, "M4 4h16v16H4z M8 8v3m4-3v2m4-2v3");
+  appendFact("bedrooms", item.bedrooms, text.bedrooms, "M3 18v-6h18v6M3 13h18M7 12V8h4v4M2 21v-3m20 3v-3");
+  appendFact("bathrooms", item.bathrooms, text.baths, "M3 12h18v2a6 6 0 0 1-6 6H9a6 6 0 0 1-6-6zM5 12V6a2 2 0 0 1 4 0");
+  appendFact("kitchens", item.kitchens, isArabic ? "مطابخ" : "kitchens", "M6 3v7m-3-3h6m-3 3v11m8-18v18m0-18c3 3 3 7 0 7");
+  appendFact("balconies", item.balconies, isArabic ? "شرفات" : "balconies", "M4 21h16M6 21V4h12v17M6 10h12M10 4v6m4-6v6");
   if (facts.childElementCount) info.append(facts);
   const bottom = document.createElement("div");
   bottom.className = "property-bottom";
@@ -370,7 +411,9 @@ function render() {
   grid.replaceChildren();
   document.querySelector("#result-count").textContent = text.count(matching.length);
   if (!matching.length) {
-    const message = listings.length ? text.noMatch : text.noListings;
+    const message = isHomepage && allAvailableListings.length && !listings.length
+      ? text.noFeatured
+      : listings.length ? text.noMatch : text.noListings;
     const empty = document.createElement("div");
     empty.className = "empty-state";
     empty.append(node("p", "", message));
@@ -394,11 +437,112 @@ function setStatus(message, state) {
   status.replaceChildren(document.createElement("i"), document.createTextNode(message));
 }
 
+function renderCampaignSections(campaignItems) {
+  const main = document.querySelector("main");
+  const propertiesSection = document.querySelector("#properties");
+  if (!main || !propertiesSection) return;
+  main.querySelectorAll("[data-campaign-section]").forEach((section) => section.remove());
+  const labels = isArabic
+    ? { ad: "إعلانات", sale: "مبيعات", offer: "عروض" }
+    : { ad: "Ads", sale: "Sales", offer: "Offers" };
+  const titles = isArabic
+    ? { ad: "إعلانات مختارة", sale: "عقارات للبيع", offer: "عروض خاصة" }
+    : { ad: "Featured ads", sale: "For sale", offer: "Special offers" };
+
+  ["ad", "sale", "offer"].forEach((kind) => {
+    const matching = campaignItems.filter((item) => item.kind === kind);
+    if (!matching.length) return;
+    const section = document.createElement("section");
+    section.className = `campaign-section section-pad campaign-section-${kind}`;
+    section.dataset.campaignSection = kind;
+    section.setAttribute("aria-label", titles[kind]);
+    const topline = document.createElement("div");
+    topline.className = "section-topline";
+    topline.append(node("span", "", labels[kind]));
+    const heading = document.createElement("div");
+    heading.className = "section-heading campaign-heading";
+    const headingCopy = document.createElement("div");
+    headingCopy.append(node("p", "eyebrow eyebrow-dark", isArabic ? "من المكتب" : "FROM THE OFFICE"));
+    headingCopy.append(node("h2", "", titles[kind]));
+    heading.append(headingCopy);
+    const cards = document.createElement("div");
+    cards.className = "campaign-grid";
+
+    matching.forEach((campaign) => {
+      const card = document.createElement("article");
+      card.className = "campaign-card";
+      const visual = document.createElement("div");
+      visual.className = "campaign-visual";
+      const imageUrl = safeCampaignUrl(campaign.imageUrl);
+      if (imageUrl) {
+        const image = document.createElement("img");
+        image.src = imageUrl;
+        image.alt = campaign[isArabic ? "titleAr" : "titleEn"] || titles[kind];
+        image.loading = "lazy";
+        visual.append(image);
+      } else {
+        visual.classList.add("campaign-visual-empty");
+        visual.append(node("span", "campaign-visual-mark", labels[kind]));
+      }
+      const copy = document.createElement("div");
+      copy.className = "campaign-copy";
+      copy.append(node("p", "eyebrow eyebrow-dark", labels[kind]));
+      copy.append(node("h3", "", campaign[isArabic ? "titleAr" : "titleEn"] || titles[kind]));
+      const description = campaign[isArabic ? "descriptionAr" : "descriptionEn"];
+      if (description) copy.append(node("p", "", description));
+      const ctaUrl = safeCampaignUrl(campaign.ctaUrl);
+      if (ctaUrl) {
+        const link = document.createElement("a");
+        link.className = "text-link-arrow";
+        link.href = ctaUrl;
+        if (new URL(ctaUrl).origin !== window.location.origin) {
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+        }
+        link.textContent = campaign[isArabic ? "ctaLabelAr" : "ctaLabelEn"] || (isArabic ? "التفاصيل" : "View details");
+        copy.append(link);
+      }
+      card.append(visual, copy);
+      cards.append(card);
+    });
+
+    section.append(topline, heading, cards);
+    const journeySection = main.querySelector(".journey-section");
+    main.insertBefore(section, kind === "ad" ? propertiesSection : journeySection || propertiesSection.nextSibling);
+  });
+}
+
+function safeCampaignUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  try {
+    const url = new URL(value, window.location.origin);
+    return url.protocol === "https:" || url.origin === window.location.origin ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
+async function loadCampaignSections() {
+  if (!isHomepage) return;
+  try {
+    const result = await firebase.getDocs(firebase.query(
+      firebase.collection(database, "campaigns"),
+      firebase.where("status", "==", "active")
+    ));
+    const campaignItems = result.docs.map((snapshot) => ({ id: snapshot.id, ...snapshot.data() }));
+    campaignItems.sort((first, second) => (second.updatedAt?.seconds || 0) - (first.updatedAt?.seconds || 0));
+    renderCampaignSections(campaignItems);
+  } catch (error) {
+    console.warn("Unable to load homepage campaigns", error);
+  }
+}
+
 async function loadListings() {
   const config = window.FIREBASE_CONFIG;
   if (!config || !["apiKey", "authDomain", "projectId", "appId"].every((key) => config[key]?.trim())) {
     setStatus(isArabic ? "بانتظار إعداد قاعدة البيانات" : "Firebase setup required");
     listings = [];
+    allAvailableListings = [];
     render();
     return;
   }
@@ -410,7 +554,9 @@ async function loadListings() {
     firebase = firestoreSdk;
     database = firebase.getFirestore(app);
     const result = await firebase.getDocs(firebase.query(firebase.collection(database, "properties"), firebase.where("status", "==", "available")));
-    listings = result.docs.map((snapshot) => ({ id: snapshot.id, ...snapshot.data() }));
+    await loadCampaignSections();
+    allAvailableListings = result.docs.map((snapshot) => ({ id: snapshot.id, ...snapshot.data() }));
+    listings = isHomepage ? allAvailableListings.filter((item) => item.homeFeatured !== false) : [...allAvailableListings];
     listings.sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
     const locations = new Map();
     listings.forEach((item) => item.locationKey && locations.set(item.locationKey, item[isArabic ? "locationAr" : "locationEn"] || item.locationKey));
