@@ -299,7 +299,7 @@ function createPropertyGallery(property) {
       }
     } catch {}
   }
-  if (!imageUrls.length) imageUrls.push(logo);
+  if (!imageUrls.length) imageUrls.push(logo, logo);
   gallery.dataset.slideCount = String(imageUrls.length);
 
   const track = document.createElement("div");
@@ -325,7 +325,28 @@ function createPropertyGallery(property) {
   if (imageUrls.length > 1) {
     const counter = node("span", "gallery-counter", `01 / ${String(imageUrls.length).padStart(2, "0")}`);
     counter.setAttribute("aria-live", "polite");
-    gallery.append(counter);
+    const controls = document.createElement("div");
+    controls.className = "property-gallery-controls";
+    const makeGalleryButton = (direction) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "property-gallery-control";
+      button.textContent = direction < 0 ? "←" : "→";
+      const label = direction < 0
+        ? (isArabic ? "الصورة السابقة" : "Previous photo")
+        : (isArabic ? "الصورة التالية" : "Next photo");
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.addEventListener("click", () => {
+        const current = Math.round(track.scrollLeft / Math.max(track.clientWidth, 1));
+        const next = (current + direction + imageUrls.length) % imageUrls.length;
+        gallery.dataset.pauseUntil = String(Date.now() + 8000);
+        track.scrollTo({ left: next * track.clientWidth, behavior: reduceMotion ? "auto" : "smooth" });
+      });
+      return button;
+    };
+    controls.append(makeGalleryButton(-1), makeGalleryButton(1));
+    gallery.append(counter, controls);
     track.addEventListener("scroll", () => {
       const index = Math.min(imageUrls.length - 1, Math.round(track.scrollLeft / Math.max(track.clientWidth, 1)));
       counter.textContent = `${String(index + 1).padStart(2, "0")} / ${String(imageUrls.length).padStart(2, "0")}`;
